@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from typing import List, Dict, Optional
 from pydantic import BaseModel
 import csv
@@ -85,6 +85,7 @@ async def chat_analyze(
 @router.post("/upload")
 async def upload_csv(
     file: UploadFile = File(...),
+    conversation_id: Optional[str] = Form(None),
     current_user: UserInDB = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
 ):
@@ -126,7 +127,10 @@ async def upload_csv(
             )
 
         analysis = await chat_service.process_csv_upload(
-            user_id=str(current_user.id), feedbacks=reviews, filename=file.filename
+            user_id=str(current_user.id),
+            feedbacks=reviews,
+            filename=file.filename,
+            conversation_id=conversation_id,
         )
         return analysis
     except UnicodeDecodeError:
@@ -158,6 +162,12 @@ async def quick_sentiment(
         "best",
         "perfect",
         "wonderful",
+        "clean",
+        "easy",
+        "smooth",
+        "fast",
+        "speed",
+        "smoothly",
     ]
     negative_words = [
         "bad",
@@ -169,6 +179,11 @@ async def quick_sentiment(
         "broken",
         "crash",
         "disappointed",
+        "issue",
+        "bug",
+        "problem",
+        "expensive",
+        "battery",
     ]
     pos_count = sum(1 for word in positive_words if word in text_lower)
     neg_count = sum(1 for word in negative_words if word in text_lower)

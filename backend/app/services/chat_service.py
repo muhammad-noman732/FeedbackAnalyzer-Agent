@@ -237,6 +237,8 @@ class ChatService:
                 "type": "new_feedback_analysis",
                 "feedbacks_analyzed": len(feedbacks),
                 "satisfaction": int(analysis.satisfaction_index * 100),
+                "sentiment": analysis.overall_sentiment,
+                "index": int(analysis.satisfaction_index * 100),
             },
             "is_question": False,
             "success": True,
@@ -355,8 +357,6 @@ class ChatService:
             "bugs",
             "error",
             "errors",
-            "issue",
-            "issues",
             "problem",
             "problems",
             "fail",
@@ -395,7 +395,6 @@ class ChatService:
             "disappointed",
             "complaint",
             "complain",
-            "fix",
             "broken",
         }
 
@@ -444,13 +443,14 @@ class ChatService:
         # 1. Prepare and save all feedbacks in bulk first
         feedback_docs = []
         for text in feedbacks:
-            if text.strip():
+            cleaned = text.strip()
+            if cleaned:
                 feedback_docs.append(
                     {
                         "user_id": user_id,
                         "conversation_id": conversation_id,
-                        "content": text,
-                        "sentiment": self._quick_sentiment(text),
+                        "content": cleaned,
+                        "sentiment": self._quick_sentiment(cleaned),
                         "sentiment_score": 0.5,
                         "themes": [],
                     }
@@ -470,10 +470,31 @@ class ChatService:
             conversation_id=conversation_id,
         )
 
+        # 4. Save analysis as a message for agent history context
+        self.feedback_repo.create_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=analysis.chat_response,
+            metadata={
+                "type": "csv_analysis",
+                "filename": filename,
+                "feedbacks_analyzed": len(feedbacks),
+                "sentiment": analysis.overall_sentiment,
+                "index": int(analysis.satisfaction_index * 100),
+            },
+        )
+
         return {
             "conversation_id": conversation_id,
             "response": analysis.chat_response,
             "analysis": analysis.model_dump(),
+            "metadata": {
+                "type": "new_feedback_batch",
+                "filename": filename,
+                "feedbacks_analyzed": len(feedbacks),
+                "sentiment": analysis.overall_sentiment,
+                "index": int(analysis.satisfaction_index * 100),
+            },
             "is_question": False,
             "success": True,
         }

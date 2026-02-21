@@ -1,30 +1,15 @@
 'use client';
-import React from "react"
+import React from "react";
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Plus, Copy, ThumbsUp, ThumbsDown, MoreVertical, Upload, Zap, Brain } from 'lucide-react';
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'agent';
-  timestamp: Date;
-  hasActions?: boolean;
-}
-const SAMPLE_RESPONSES = [
-  "Analyzed **10** feedbacks. **Mixed** sentiment (**60%** satisfaction).\n\n**Breakdown:** **40%** positive, **20%** neutral, **40%** negative.\n\n**Main Strengths:** Ambiance and desserts (**3x**).\n\n**Main Issues:** Service and food temperature (**2x**), Overpriced portions (**1x**), Broken reservation system (**1x**).\n\n**Priority Action:** Improve the reservation system and address food temperature issues to increase overall customer satisfaction.",
-  "Based on the sentiment analysis, your strongest points are customer support (**91%** **Positive**) and design (**82%** **Positive**). However, pricing is contentious with **35%** **Negative** mentions.",
-  "Analyzed **50** feedbacks. **Positive** sentiment (**88%** satisfaction).\n\n**Breakdown:** **88%** positive, **8%** neutral, **4%** negative.\n\n**Main Strengths:** User interface and features (**15x**), Fast performance (**12x**).\n\n**Main Issues:** Pricing concerns (**3x**).",
-  "Analyzed **25** feedbacks. **Negative** sentiment (**35%** satisfaction).\n\n**Breakdown:** **20%** positive, **15%** neutral, **65%** negative.\n\n**Main Strengths:** Concept idea (**2x**).\n\n**Main Issues:** Poor customer service (**18x**), Bugs and crashes (**10x**), Missing features (**8x**).\n\n**Priority Action:** Address customer service quality immediately and fix critical bugs.",
-  "The data shows your mobile app has **Neutral** sentiment (**62%**) compared to desktop (**88%** **Positive**). Mobile optimization should be a **Priority Action**.",
-  "Analyzed **1** feedback. **Positive** sentiment (**100%** satisfaction).\n\n**Breakdown:** **100%** positive, **0%** neutral, **0%** negative.\n\n**Main Strengths:** Excellent overall experience (**1x**).\n\n**Main Issues:** None identified.\n\n**Priority Action:** Continue delivering the same level of quality and service.",
-  "Analyzed **1** feedback. **Negative** sentiment (**0%** satisfaction).\n\n**Breakdown:** **0%** positive, **0%** neutral, **100%** negative.\n\n**Main Issues:** Product quality (**1x**).\n\n**Priority Action:** Investigate and address the specific product quality issues mentioned in the feedback to improve customer satisfaction.",
-  "Analyzed **1** feedback. **Neutral** sentiment (**50%** satisfaction).\n\n**Breakdown:** **0%** positive, **100%** neutral, **0%** negative.\n\n**Main Strengths:** None.\n\n**Main Issues:** None.\n\n**Priority Action:** Collect more feedback to determine areas of improvement.",
-];
-
+import { Send, Plus, Copy, ThumbsUp, ThumbsDown, MoreVertical, Upload, Zap, Brain, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useChat } from '@/hooks/useChat';
+
+// ─── Styled Feedback Response ─────────────────────────────────────────────────
 
 const StyledFeedbackResponse = ({ text }: { text: string }) => {
   const detectSentiment = (text: string) => {
@@ -47,8 +32,6 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
   };
 
   const config = sentimentConfig[sentiment];
-
-  // Split by double newline OR single newline before a Bold/Header section
   const sections = text.split(/\n\n|\n(?=\*\*|###)/);
 
   return (
@@ -65,9 +48,12 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
 
         const lowerTrimmed = trimmed.toLowerCase();
 
-        if (trimmed.startsWith('Analyzed')) {
+        if (trimmed.startsWith('Analyzed') || lowerTrimmed.includes('feedback analysis')) {
           icon = config.icon;
-          title = "Intelligence Analysis";
+          title = lowerTrimmed.includes('negative') ? "🔴 Negative Feedback Analysis" :
+            lowerTrimmed.includes('positive') ? "🟢 Positive Feedback Analysis" :
+              lowerTrimmed.includes('mixed') ? "⊗ Mixed Feedback Analysis" :
+                "Intelligence Analysis";
           bgColor = config.bgColor;
           borderColor = config.borderColor;
           titleColor = config.color;
@@ -75,6 +61,10 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
           title = "💡 Key Insights";
           bgColor = "bg-zinc-900/40";
           titleColor = "text-zinc-300";
+        } else if (lowerTrimmed.includes('patterns')) {
+          title = "🧩 Identified Patterns";
+          bgColor = "bg-zinc-900/40";
+          titleColor = "text-blue-300";
         } else if (lowerTrimmed.includes('breakdown')) {
           title = "📊 Sentiment Distribution";
           bgColor = "bg-amber-950/40";
@@ -94,7 +84,7 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
           title = "🧐 Feature Breakdown";
           bgColor = "bg-zinc-900/40";
           titleColor = "text-zinc-300";
-        } else if (lowerTrimmed.includes('priority action')) {
+        } else if (lowerTrimmed.includes('priority action') || lowerTrimmed.includes('priority actions')) {
           title = "🎯 Tactical Priority";
           bgColor = "bg-blue-950/40";
           borderColor = "border-blue-700/50";
@@ -107,11 +97,14 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
           title = "🚀 Business Forecast";
           bgColor = "bg-emerald-950/20";
           titleColor = "text-emerald-400";
+        } else if (lowerTrimmed.includes('how to use')) {
+          title = "ℹ️ Getting Started";
+          bgColor = "bg-blue-950/20";
+          titleColor = "text-blue-300";
         }
 
-        // Only strip the title if it's at the very beginning and followed by newline or colon
         const cleanedContent = trimmed
-          .replace(/^(###\s*)?\**\s*(Analyzed|Key Insights|Breakdown|Main Strengths|Strengths|Main Issues|Weaknesses|Detailed Analysis|Priority Action|Recommendation|Expected Impact)\s*:?\**\s*\n?/, '')
+          .replace(/^(###\s*)?\**\s*(Analyzed|Key Insights|Breakdown|Main Strengths|Strengths|Main Issues|Weaknesses|Detailed Analysis|Priority Action|Priority Actions|Recommendation|Expected Impact)\s*:?\**\s*\n?/, '')
           .trim();
 
         return (
@@ -134,8 +127,31 @@ const StyledFeedbackResponse = ({ text }: { text: string }) => {
   );
 };
 
+// ─── User Message (with show more/less for long messages) ────────────────────
 
-import { useChat } from '@/hooks/useChat';
+const UserMessage = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_CHARS = 300;
+  const isLong = text.length > MAX_CHARS;
+  const displayText = isLong && !expanded ? text.slice(0, MAX_CHARS) + '…' : text;
+
+  return (
+    <div>
+      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{displayText}</p>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-1 flex items-center gap-1 text-xs text-blue-300 hover:text-blue-200 transition-colors"
+        >
+          <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Chat Page ────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const {
@@ -144,85 +160,97 @@ export default function ChatPage() {
     setInputValue,
     loading,
     messagesEndRef,
+    fileInputRef,
     handleSendMessage,
+    handleFileInputChange,
+    triggerFileUpload,
     handleCopyMessage,
+    startNewChat,
   } = useChat();
 
   return (
     <div className="h-screen flex bg-background">
-      { }
+      {/* Hidden file input for CSV upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={handleFileInputChange}
+        id="csv-file-input"
+      />
+
+      {/* ── Sidebar ───────────────────────────────── */}
       <div className="w-72 bg-card border-r border-border flex flex-col">
-        { }
         <div className="p-4 border-b border-border">
-          <button className="w-full flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition">
+          <button
+            onClick={startNewChat}
+            className="w-full flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition"
+          >
             <Plus className="w-5 h-5" />
             New Chat
           </button>
         </div>
-        { }
+
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground px-2 uppercase">Today</div>
-          {[
-            'Analyzing Q4 feedback trends',
-            'Customer satisfaction insights',
-            'Feature request prioritization',
-          ].map((title, i) => (
-            <button
-              key={i}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition group text-sm text-foreground"
-            >
-              <p className="truncate">{title}</p>
-              <p className="text-xs text-muted-foreground truncate">2 minutes ago</p>
-            </button>
-          ))}
-          <div className="text-xs font-semibold text-muted-foreground px-2 uppercase mt-6">Yesterday</div>
-          {[
-            'Sentiment analysis for new features',
-            'Competitor feedback comparison',
-          ].map((title, i) => (
-            <button
-              key={i}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition text-sm text-foreground"
-            >
-              <p className="truncate">{title}</p>
-              <p className="text-xs text-muted-foreground truncate">1 day ago</p>
-            </button>
-          ))}
+          <div className="text-xs font-semibold text-muted-foreground px-2 uppercase">Current Session</div>
+          {messages
+            .filter(m => m.sender === 'user')
+            .slice(0, 5)
+            .map((m, i) => (
+              <div
+                key={i}
+                className="w-full text-left px-3 py-2 rounded-lg bg-secondary/40 text-sm text-foreground"
+              >
+                <p className="truncate">{m.text}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            ))}
+          {messages.filter(m => m.sender === 'user').length === 0 && (
+            <p className="text-xs text-muted-foreground px-2 py-4 text-center">
+              No messages yet. Start by pasting feedback or uploading a CSV.
+            </p>
+          )}
         </div>
-        { }
+
         <div className="border-t border-border p-4 space-y-2">
-          <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition text-sm">
-            Settings
-          </button>
-          <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition text-sm">
-            Help & Feedback
-          </button>
+          <Link href="/dashboard" className="block w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition text-sm">
+            ← Dashboard
+          </Link>
         </div>
       </div>
-      { }
+
+      {/* ── Main Chat Area ───────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        { }
+        {/* Header */}
         <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" />
               Feedback Analysis Chat
             </h1>
-            <p className="text-xs text-muted-foreground">3 active conversations</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.filter(m => m.sender !== 'agent' || m.id.startsWith('welcome')).length > 1
+                ? `${messages.filter(m => m.sender === 'user').length} messages in current session`
+                : 'Beta · Powered by LLaMA 3.3'}
+            </p>
           </div>
           <button className="p-2 hover:bg-secondary rounded-lg transition">
             <MoreVertical className="w-5 h-5" />
           </button>
         </div>
-        { }
+
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex gap-3 max-w-2xl ${message.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                { }
+              <div className={`flex gap-3 max-w-2xl w-full ${message.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                {/* Avatar */}
                 <div
                   className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${message.sender === 'user'
                     ? 'bg-primary text-primary-foreground'
@@ -231,21 +259,25 @@ export default function ChatPage() {
                 >
                   {message.sender === 'user' ? 'You' : 'AI'}
                 </div>
-                { }
-                <div className={`space-y-2`}>
+
+                {/* Bubble */}
+                <div className="space-y-2 min-w-0 flex-1">
                   <div
                     className={`rounded-2xl px-5 py-4 ${message.sender === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-zinc-900 border border-zinc-800 text-zinc-100'
+                      : message.type === 'error'
+                        ? 'bg-red-950/40 border border-red-800/50 text-red-100'
+                        : 'bg-zinc-900 border border-zinc-800 text-zinc-100'
                       }`}
                   >
                     {message.sender === 'agent' ? (
                       <StyledFeedbackResponse text={message.text} />
                     ) : (
-                      <p className="text-sm leading-relaxed">{message.text}</p>
+                      <UserMessage text={message.text} />
                     )}
                   </div>
-                  { }
+
+                  {/* Action buttons */}
                   {message.sender === 'agent' && message.hasActions && (
                     <div className="flex gap-2 px-1 pt-1">
                       <button
@@ -255,20 +287,15 @@ export default function ChatPage() {
                       >
                         <Copy className="w-4 h-4 text-muted-foreground" />
                       </button>
-                      <button
-                        className="p-1.5 hover:bg-secondary rounded transition"
-                        title="Helpful"
-                      >
+                      <button className="p-1.5 hover:bg-secondary rounded transition" title="Helpful">
                         <ThumbsUp className="w-4 h-4 text-muted-foreground" />
                       </button>
-                      <button
-                        className="p-1.5 hover:bg-secondary rounded transition"
-                        title="Not helpful"
-                      >
+                      <button className="p-1.5 hover:bg-secondary rounded transition" title="Not helpful">
                         <ThumbsDown className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
                   )}
+
                   <p className="text-xs text-muted-foreground px-1">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -276,7 +303,8 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-          { }
+
+          {/* Loading indicator */}
           {loading && (
             <div className="flex justify-start">
               <div className="flex gap-3">
@@ -293,22 +321,21 @@ export default function ChatPage() {
           )}
           <div ref={messagesEndRef} />
         </div>
-        { }
-        {messages.length === 2 && (
-          <div className="px-6 pb-6">
+
+        {/* Suggestion chips (show only at beginning) */}
+        {messages.length <= 1 && (
+          <div className="px-6 pb-4">
             <p className="text-sm text-muted-foreground mb-3">Try asking me:</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                'Analyze this feedback for me',
-                'What are the top themes?',
-                'Show sentiment breakdown',
-                'Find improvement opportunities',
+                'What are the top complaints?',
+                'Show me positive feedback',
+                'Give me an analytics summary',
+                'What should I improve first?',
               ].map((suggestion, i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setInputValue(suggestion);
-                  }}
+                  onClick={() => setInputValue(suggestion)}
                   className="text-left text-xs px-3 py-2 rounded-lg border border-border hover:bg-secondary transition bg-card"
                 >
                   {suggestion}
@@ -317,26 +344,36 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-        { }
+
+        {/* Input area */}
         <div className="border-t border-border px-6 py-4 bg-card">
           <div className="space-y-3 mb-4">
-            { }
             <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 text-sm rounded-lg transition">
+              <button
+                onClick={triggerFileUpload}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 text-sm rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Upload a CSV file with customer feedback"
+              >
                 <Upload className="w-4 h-4" />
                 Upload CSV
               </button>
-              <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 text-sm rounded-lg transition">
+              <button
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-secondary hover:bg-secondary/80 text-sm rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Paste feedback text directly in the chat input below"
+                onClick={() => setInputValue('')}
+              >
                 <Brain className="w-4 h-4" />
                 Paste Feedback
               </button>
             </div>
           </div>
-          { }
+
           <form onSubmit={handleSendMessage} className="flex gap-3">
             <Input
               type="text"
-              placeholder="Ask your AI analyst anything..."
+              placeholder="Paste feedback or ask a question..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               disabled={loading}

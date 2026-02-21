@@ -100,7 +100,10 @@ export function useDashboard() {
         if (pendingFile) {
             (window as any)._pendingFile = null;
             try {
-                const result = await uploadCsv(pendingFile);
+                const result = await uploadCsv(pendingFile, conversationId || undefined);
+                if (result.conversation_id) {
+                    setConversationId(result.conversation_id);
+                }
                 if (result.analysis) {
                     setAnalysisResult(result.analysis);
                 }

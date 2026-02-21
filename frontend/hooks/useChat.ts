@@ -1,44 +1,72 @@
-'use client';
+﻿'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
-interface Message {
+export interface Message {
     id: string;
     text: string;
     sender: 'user' | 'agent';
     timestamp: Date;
     hasActions?: boolean;
+    type?: 'feedback' | 'question' | 'csv' | 'meta' | 'error';
 }
 
-const SAMPLE_RESPONSES = [
-    "Analyzed **10** feedbacks. **Mixed** sentiment (**60%** satisfaction).\n\n**Breakdown:** **40%** positive, **20%** neutral, **40%** negative.\n\n**Main Strengths:** Ambiance and desserts (**3x**).\n\n**Main Issues:** Service and food temperature (**2x**), Overpriced portions (**1x**), Broken reservation system (**1x**).\n\n**Priority Action:** Improve the reservation system and address food temperature issues to increase overall customer satisfaction.",
-    "Based on the sentiment analysis, your strongest points are customer support (**91%** **Positive**) and design (**82%** **Positive**). However, pricing is contentious with **35%** **Negative** mentions.",
-    "Analyzed **50** feedbacks. **Positive** sentiment (**88%** satisfaction).\n\n**Breakdown:** **88%** positive, **8%** neutral, **4%** negative.\n\n**Main Strengths:** User interface and features (**15x**), Fast performance (**12x**).\n\n**Main Issues:** Pricing concerns (**3x**).",
-    "Analyzed **25** feedbacks. **Negative** sentiment (**35%** satisfaction).\n\n**Breakdown:** **20%** positive, **15%** neutral, **65%** negative.\n\n**Main Strengths:** Concept idea (**2x**).\n\n**Main Issues:** Poor customer service (**18x**), Bugs and crashes (**10x**), Missing features (**8x**).\n\n**Priority Action:** Address customer service quality immediately and fix critical bugs.",
-    "The data shows your mobile app has **Neutral** sentiment (**62%**) compared to desktop (**88%** **Positive**). Mobile optimization should be a **Priority Action**.",
-    "Analyzed **1** feedback. **Positive** sentiment (**100%** satisfaction).\n\n**Breakdown:** **100%** positive, **0%** neutral, **0%** negative.\n\n**Main Strengths:** Excellent overall experience (**1x**).\n\n**Main Issues:** None identified.\n\n**Priority Action:** Continue delivering the same level of quality and service.",
-    "Analyzed **1** feedback. **Negative** sentiment (**0%** satisfaction).\n\n**Breakdown:** **0%** positive, **0%** neutral, **100%** negative.\n\n**Main Issues:** Product quality (**1x**).\n\n**Priority Action:** Investigate and address the specific product quality issues mentioned in the feedback to improve customer satisfaction.",
-    "Analyzed **1** feedback. **Neutral** sentiment (**50%** satisfaction).\n\n**Breakdown:** **0%** positive, **100%** neutral, **0%** negative.\n\n**Main Strengths:** None.\n\n**Main Issues:** None.\n\n**Priority Action:** Collect more feedback to determine areas of improvement.",
+function getAuthHeaders(): Record<string, string> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function sendChatMessage(message: string, conversationId?: string) {
+    const response = await fetch(API_ENDPOINTS.ANALYZE.CHAT, {
+        method: 'POST',
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message, conversation_id: conversationId ?? null }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Chat request failed');
+    }
+    return response.json();
+}
+
+async function uploadCsvFile(file: File, conversationId?: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (conversationId) {
+        formData.append('conversation_id', conversationId);
+    }
+    const response = await fetch(API_ENDPOINTS.ANALYZE.UPLOAD, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'CSV upload failed');
+    }
+    return response.json();
+}
+
+const WELCOME_MESSAGES: Message[] = [
+    {
+        id: 'welcome-1',
+        text: "Hi! I am your AI feedback analyst. I can help you analyze customer reviews, identify patterns, and discover actionable insights.\n\n**How to use me:**\n- **Paste feedback** directly in the chat (e.g., \"app crashes every time\")\n- **Upload a CSV** using the button below\n- **Ask questions** about your data (e.g., \"What are the top complaints?\")",
+        sender: 'agent',
+        timestamp: new Date(),
+    },
 ];
 
 export function useChat() {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            text: "Hi! I'm your AI feedback analyst. I can help you analyze customer reviews, identify patterns, and discover actionable insights. You can paste feedback directly, upload CSV files, or ask me questions about your data.",
-            sender: 'agent',
-            timestamp: new Date(),
-        },
-        {
-            id: '2',
-            text: "What specific aspects of customer feedback would you like me to analyze?",
-            sender: 'agent',
-            timestamp: new Date(),
-        },
-    ]);
+    const [messages, setMessages] = useState<Message[]>(WELCOME_MESSAGES);
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
+    const [conversationId, setConversationId] = useState<string | undefined>(undefined);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,47 +76,140 @@ export function useChat() {
         scrollToBottom();
     }, [messages]);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputValue.trim() || loading) return;
-
-        const userMessage: Message = {
+    const addUserMessage = useCallback((text: string): Message => {
+        const msg: Message = {
             id: Date.now().toString(),
-            text: inputValue,
+            text,
             sender: 'user',
             timestamp: new Date(),
         };
+        setMessages(prev => [...prev, msg]);
+        return msg;
+    }, []);
 
-        setMessages(prev => [...prev, userMessage]);
+    const addAgentMessage = useCallback((text: string, type?: Message['type']): Message => {
+        const msg: Message = {
+            id: (Date.now() + 1).toString(),
+            text,
+            sender: 'agent',
+            timestamp: new Date(),
+            hasActions: true,
+            type,
+        };
+        setMessages(prev => [...prev, msg]);
+        return msg;
+    }, []);
+
+    const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = inputValue.trim();
+        if (!trimmed || loading) return;
+
+        addUserMessage(trimmed);
         setInputValue('');
         setLoading(true);
 
-        // Mock API delay
-        setTimeout(() => {
-            const randomResponse = SAMPLE_RESPONSES[Math.floor(Math.random() * SAMPLE_RESPONSES.length)];
-            const agentMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: randomResponse,
+        try {
+            const result = await sendChatMessage(trimmed, conversationId);
+
+            if (result.conversation_id && result.conversation_id !== 'error') {
+                setConversationId(result.conversation_id);
+            }
+
+            const responseText = result.response || 'I encountered an issue. Please try again.';
+            addAgentMessage(responseText, result.is_question ? 'question' : 'feedback');
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+            addAgentMessage(
+                `Warning: **Error:** ${errorMsg}\n\nPlease check your connection and try again.`,
+                'error'
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, [inputValue, loading, conversationId, addUserMessage, addAgentMessage]);
+
+    const handleCsvUpload = useCallback(async (file: File) => {
+        if (!file || !file.name.endsWith('.csv')) {
+            addAgentMessage('Warning: **Invalid file.** Please upload a `.csv` file.', 'error');
+            return;
+        }
+
+        addUserMessage(`Uploading: **${file.name}** (${(file.size / 1024).toFixed(1)} KB)`);
+        setLoading(true);
+
+        const processingId = (Date.now() + 2).toString();
+        setMessages(prev => [
+            ...prev,
+            {
+                id: processingId,
+                text: `Processing **${file.name}**... This may take a moment for large files.`,
                 sender: 'agent',
                 timestamp: new Date(),
-                hasActions: true,
-            };
-            setMessages(prev => [...prev, agentMessage]);
-            setLoading(false);
-        }, 1200);
-    };
+                type: 'csv',
+            },
+        ]);
 
-    const handleCopyMessage = (text: string) => {
-        navigator.clipboard.writeText(text);
-    };
+        try {
+            const result = await uploadCsvFile(file, conversationId);
+
+            setMessages(prev => prev.filter(m => m.id !== processingId));
+
+            if (result.conversation_id && result.conversation_id !== 'error') {
+                setConversationId(result.conversation_id);
+            }
+
+            const responseText = result.response || 'CSV processed successfully.';
+            addAgentMessage(responseText, 'csv');
+        } catch (err) {
+            setMessages(prev => prev.filter(m => m.id !== processingId));
+            const errorMsg = err instanceof Error ? err.message : 'Upload failed.';
+            addAgentMessage(
+                `Warning **Upload Error:** ${errorMsg}\n\nMake sure the CSV has a column named "review", "feedback", "text", or "comment".`,
+                'error'
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, [conversationId, addUserMessage, addAgentMessage]);
+
+    const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handleCsvUpload(file);
+        }
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }, [handleCsvUpload]);
+
+    const triggerFileUpload = useCallback(() => {
+        fileInputRef.current?.click();
+    }, []);
+
+    const handleCopyMessage = useCallback((text: string) => {
+        navigator.clipboard.writeText(text).catch(() => {});
+    }, []);
+
+    const startNewChat = useCallback(() => {
+        setConversationId(undefined);
+        setMessages(WELCOME_MESSAGES);
+        setInputValue('');
+    }, []);
 
     return {
         messages,
         inputValue,
         setInputValue,
         loading,
+        conversationId,
         messagesEndRef,
+        fileInputRef,
         handleSendMessage,
+        handleCsvUpload,
+        handleFileInputChange,
+        triggerFileUpload,
         handleCopyMessage,
+        startNewChat,
     };
 }

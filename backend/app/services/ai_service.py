@@ -64,6 +64,7 @@ TEMPLATE (write every section completely):
 [Professional 2-3 sentence summary of how these actions will improve the product]"
 
 RULES:
+- If the feedback mentions "clean", "easy", "smooth", "fast", or "helpful", the sentiment MUST be "positive".
 - Ensure 'sentiment_distribution' counts sum to exactly {feedback_count}.
 - Return ONLY valid JSON matching the schema below.
 - The 'chat_response' field MUST be complete — never end mid-sentence.
@@ -343,20 +344,25 @@ Return a clear, structured, and long-form response."""
         dist = result.sentiment_distribution
         dist_total = dist.positive + dist.neutral + dist.negative + dist.mixed
 
-        if dist_total > expected_count:
+        # For single feedback messages, ALWAYS report 1, regardless of what the LLM says
+        if expected_count == 1:
+            result.total_feedbacks_analyzed = 1
+            current_total = 1
+        elif dist_total > expected_count:
             result.total_feedbacks_analyzed = dist_total
             current_total = dist_total
         else:
             result.total_feedbacks_analyzed = expected_count
             current_total = expected_count
 
-        if (
-            f"Analyzed {expected_count}" in result.chat_response
-            and current_total != expected_count
-        ):
-            result.chat_response = result.chat_response.replace(
-                f"Analyzed {expected_count}", f"Analyzed {current_total}"
-            )
+        import re
+
+        # Always force the correct count in the chat response text
+        result.chat_response = re.sub(
+            r"Analyzed \d+ feedback/s?",
+            f"Analyzed {current_total} feedback{'s' if current_total != 1 else ''}",
+            result.chat_response,
+        )
 
         if current_total == 1:
             sentiment = result.overall_sentiment.lower()

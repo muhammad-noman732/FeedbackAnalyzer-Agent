@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from "@/lib/api-config";
 import { FeedbackAnalysis, AnalyticsSummary, ChatMessage, ChatResponse } from "@/types/analysis";
 interface UseAnalysisReturn {
     analyzeText: (reviews: string[], history?: ChatMessage[]) => Promise<FeedbackAnalysis>;
-    uploadCsv: (file: File) => Promise<ChatResponse>;
+    uploadCsv: (file: File, conversationId?: string) => Promise<ChatResponse>;
     sendChatMessage: (message: string, conversationId?: string) => Promise<ChatResponse>;
     getAnalyticsSummary: () => Promise<AnalyticsSummary>;
     isLoading: boolean;
@@ -44,12 +44,15 @@ export function useAnalysis(): UseAnalysisReturn {
             setIsLoading(false);
         }
     }, [getHeaders]);
-    const uploadCsv = useCallback(async (file: File): Promise<ChatResponse> => {
+    const uploadCsv = useCallback(async (file: File, conversationId?: string): Promise<ChatResponse> => {
         setIsLoading(true);
         setError(null);
         try {
             const formData = new FormData();
             formData.append("file", file);
+            if (conversationId) {
+                formData.append("conversation_id", conversationId);
+            }
             const response = await fetch(API_ENDPOINTS.ANALYZE.UPLOAD, {
                 method: "POST",
                 headers: getHeaders(),
