@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pymongo[srv]
+dnspython
+python-jose[cryptography]
+bcrypt
+python-multipart
+pydantic-settings
+pydantic[email]
+langchain
+langchain-groq
+langchain-core
+pandas
+python-dotenv
