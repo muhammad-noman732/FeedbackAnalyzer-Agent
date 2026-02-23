@@ -33,7 +33,6 @@ class ChatService:
 
         # RULE 3: Starts with a reference to previous context → question/command
         context_starters = [
-            "lol",
             "haha",
             "ha",
             "ok",

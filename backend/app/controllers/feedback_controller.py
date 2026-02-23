@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from typing import List, Dict, Optional
+from typing import Optional
 from pydantic import BaseModel
 import csv
 import io
@@ -7,13 +7,9 @@ from app.dependencies.auth import get_current_user
 from app.dependencies.services import get_chat_service
 from app.services.chat_service import ChatService
 from app.models.user import UserInDB
+import traceback
 
 router = APIRouter(prefix="/analyze", tags=["Feedback Analysis"])
-
-
-class TextAnalysisRequest(BaseModel):
-    reviews: List[str]
-    history: Optional[List[Dict[str, str]]] = []
 
 
 class ChatRequest(BaseModel):
@@ -23,25 +19,6 @@ class ChatRequest(BaseModel):
 
 class QuickSentimentRequest(BaseModel):
     text: str
-
-
-@router.post("/text")
-async def analyze_text(
-    request: TextAnalysisRequest,
-    current_user: UserInDB = Depends(get_current_user),
-    chat_service: ChatService = Depends(get_chat_service),
-):
-    if not request.reviews or len(request.reviews) == 0:
-        raise HTTPException(status_code=400, detail="No reviews provided")
-    try:
-        analysis = chat_service.analyze_reviews(
-            reviews=request.reviews,
-            history=request.history,
-            user_id=str(current_user.id),
-        )
-        return analysis.model_dump()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
 @router.post("/chat")
@@ -64,11 +41,7 @@ async def chat_analyze(
             "analysis": result.get("analysis"),
             "is_question": result.get("is_question", False),
         }
-    except Exception as e:
-        # Never let the frontend show a network error for questions/chat
-        # Return a graceful response instead of a 500
-        import traceback
-
+    except Exception:
         traceback.print_exc()
         return {
             "conversation_id": request.conversation_id or "error",
@@ -139,10 +112,8 @@ async def upload_csv(
         )
     except csv.Error as e:
         raise HTTPException(status_code=400, detail=f"CSV parsing error: {str(e)}")
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Upload processing failed: {str(e)}"
-        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Upload processing failed")
 
 
 @router.get("/quick-sentiment")
