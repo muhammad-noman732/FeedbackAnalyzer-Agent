@@ -88,7 +88,7 @@ export default function DashboardPage() {
           ].map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
+              onClick={() => setActiveTab(item.id as 'analytics' | 'chat' | 'insights')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${activeTab === item.id
                 ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-primary border-l-2 border-primary'
                 : 'hover:bg-secondary'
@@ -316,23 +316,23 @@ export default function DashboardPage() {
 
                   {messages.map(msg => (
                     <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} animate-slide-up space-y-2`}>
-                      {(msg as any).sentiment && !(msg as any).is_question && (
+                      {msg.sentiment && !msg.is_question && (
                         <div className="flex flex-col gap-1 w-full max-w-[85%]">
                           <div className="flex justify-between items-end px-1">
-                            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${(msg as any).sentiment === 'positive' ? 'text-green-500' :
-                              (msg as any).sentiment === 'negative' ? 'text-red-500' :
+                            <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${msg.sentiment === 'positive' ? 'text-green-500' :
+                              msg.sentiment === 'negative' ? 'text-red-500' :
                                 'text-amber-500'
                               }`}>
-                              {(msg as any).sentiment} Intelligence
+                              {msg.sentiment} Intelligence
                             </span>
                             <span className="text-[10px] font-black text-muted-foreground opacity-60">
-                              {(msg as any).index}% Satisfaction
+                              {msg.index}% Satisfaction
                             </span>
                           </div>
                           <div className="h-1 w-full bg-secondary/30 rounded-full overflow-hidden flex">
-                            <div className="h-full bg-green-500" style={{ width: `${(msg as any).breakdown?.positive * 100 / ((msg as any).breakdown?.total || 1) || 0}%` }} />
-                            <div className="h-full bg-zinc-500" style={{ width: `${(msg as any).breakdown?.neutral * 100 / ((msg as any).breakdown?.total || 1) || 0}%` }} />
-                            <div className="h-full bg-red-500" style={{ width: `${(msg as any).breakdown?.negative * 100 / ((msg as any).breakdown?.total || 1) || 0}%` }} />
+                            <div className="h-full bg-green-500" style={{ width: `${(msg.breakdown?.positive || 0) * 100 / (msg.breakdown?.total || 1)}%` }} />
+                            <div className="h-full bg-zinc-500" style={{ width: `${(msg.breakdown?.neutral || 0) * 100 / (msg.breakdown?.total || 1)}%` }} />
+                            <div className="h-full bg-red-500" style={{ width: `${(msg.breakdown?.negative || 0) * 100 / (msg.breakdown?.total || 1)}%` }} />
                           </div>
                         </div>
                       )}
@@ -352,14 +352,14 @@ export default function DashboardPage() {
                       </div>
 
                       { }
-                      {(msg as any).sentiment && !(msg as any).is_question && (
+                      {msg.sentiment && !msg.is_question && (
                         <div className="flex items-center gap-1.5 px-1 mt-1">
-                          <div className={`w-1.5 h-1.5 rounded-full ${(msg as any).sentiment === 'positive' ? 'bg-green-500' :
-                            (msg as any).sentiment === 'negative' ? 'bg-red-500' :
+                          <div className={`w-1.5 h-1.5 rounded-full ${msg.sentiment === 'positive' ? 'bg-green-500' :
+                            msg.sentiment === 'negative' ? 'bg-red-500' :
                               'bg-amber-500'
                             }`} />
                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Overall Status: {(msg as any).sentiment}
+                            Overall Status: {msg.sentiment}
                           </span>
                         </div>
                       )}

@@ -3,7 +3,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useAnalysis } from '@/hooks/useAnalysis';
-import { FeedbackAnalysis, AnalyticsSummary } from '@/types/analysis';
+import { FeedbackAnalysis, AnalyticsSummary, SentimentDistribution } from '@/types/analysis';
+
+export interface DashboardMessage {
+    id: number;
+    text: string;
+    sender: 'user' | 'agent';
+    sentiment?: string;
+    index?: number;
+    breakdown?: SentimentDistribution & { total?: number };
+    is_question?: boolean;
+}
 
 export function useDashboard() {
     const { user, logout } = useAuth();
@@ -11,7 +21,7 @@ export function useDashboard() {
 
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeTab, setActiveTab] = useState<'analytics' | 'chat' | 'insights'>('analytics');
-    const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState<DashboardMessage[]>([
         { id: 1, text: `Hi ${user?.first_name || 'there'}! I'm your Lead Insight Strategist. Provide customer feedback text or upload a CSV, and I'll analyze it FOR you - extracting themes, sentiments, and actionable recommendations.`, sender: 'agent' },
     ]);
     const [inputValue, setInputValue] = useState('');
@@ -20,6 +30,7 @@ export function useDashboard() {
     const [hasAnalyzedData, setHasAnalyzedData] = useState(false);
     const [conversationId, setConversationId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const pendingFileRef = useRef<File | null>(null);
 
     useEffect(() => {
         const fetchAnalytics = async () => {
@@ -96,9 +107,9 @@ export function useDashboard() {
 
         setMessages(prev => [...prev, userMessage]);
         setInputValue('');
-        const pendingFile = (window as any)._pendingFile;
+        const pendingFile = pendingFileRef.current;
         if (pendingFile) {
-            (window as any)._pendingFile = null;
+            pendingFileRef.current = null;
             try {
                 const result = await uploadCsv(pendingFile, conversationId || undefined);
                 if (result.conversation_id) {
@@ -110,8 +121,8 @@ export function useDashboard() {
                 setMessages(prev => [...prev, {
                     id: Date.now() + 1,
                     text: result.response,
-                    sender: 'agent' as const,
-                    sentiment: result.analysis?.overall_sentiment as any,
+                    sender: 'agent',
+                    sentiment: result.analysis?.overall_sentiment,
                     index: result.analysis ? Math.round(result.analysis.satisfaction_index * 100) : 50,
                     breakdown: result.analysis?.sentiment_distribution,
                     is_question: false
@@ -122,7 +133,7 @@ export function useDashboard() {
                 setMessages(prev => [...prev, {
                     id: Date.now() + 1,
                     text: "Dataset processing error. Ensure CSV contains a 'review' column.",
-                    sender: 'agent' as const
+                    sender: 'agent'
                 }]);
                 return;
             }
@@ -139,10 +150,10 @@ export function useDashboard() {
                 setAnalysisResult(chatResponse.analysis);
             }
 
-            const agentResponse = {
+            const agentResponse: DashboardMessage = {
                 id: Date.now() + 2,
                 text: chatResponse.response,
-                sender: 'agent' as const,
+                sender: 'agent',
                 sentiment: chatResponse.analysis?.overall_sentiment || 'neutral',
                 index: chatResponse.analysis ? Math.round(chatResponse.analysis.satisfaction_index * 100) : 50,
                 breakdown: chatResponse.analysis?.sentiment_distribution,
@@ -154,7 +165,7 @@ export function useDashboard() {
             setMessages(prev => [...prev, {
                 id: Date.now() + 3,
                 text: "Neural analysis interrupted. Please check your network connection.",
-                sender: 'agent' as const,
+                sender: 'agent',
             }]);
         }
     };
@@ -164,12 +175,12 @@ export function useDashboard() {
         if (!file) return;
 
         setInputValue(`Analysis request for dataset: ${file.name}`);
-        (window as any)._pendingFile = file;
+        pendingFileRef.current = file;
 
         setMessages(prev => [...prev, {
             id: Date.now(),
             text: `📎 File attached: ${file.name}. Click send to start analysis.`,
-            sender: 'agent' as const
+            sender: 'agent'
         }]);
     };
 

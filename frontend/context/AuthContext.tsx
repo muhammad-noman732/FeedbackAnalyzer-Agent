@@ -8,7 +8,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (credentials: UserLogin) => Promise<void>;
-    signup: (data: any) => Promise<void>;
+    signup: (data: UserSignup) => Promise<void>;
     logout: () => void;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetchCurrentUser(data.access_token);
         router.push("/dashboard");
     };
-    const signup = async (signupData: any) => {
+    const signup = async (signupData: UserSignup) => {
         const response = await fetch(API_ENDPOINTS.AUTH.SIGNUP, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const errorData = await response.json();
             throw new Error(errorData.detail || "Signup failed");
         }
-        router.push("/dashboard");
+        router.push("/login");
     };
     const logout = () => {
         localStorage.removeItem("access_token");
