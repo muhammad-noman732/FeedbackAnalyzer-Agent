@@ -12,7 +12,7 @@ def create_feedback_tools(user_id: str, conversation_id: str):
     db = get_database()
     feedback_collection = db["feedbacks"]
 
-    # ✅ CRITICAL: Query only current conversation
+    # CRITICAL: Query only current conversation
     try:
         base_query = {
             "user_id": ObjectId(user_id)

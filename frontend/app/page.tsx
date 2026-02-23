@@ -41,13 +41,12 @@ function Navbar() {
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm text-zinc-400">
           <Link href="#features" className="hover:text-white transition-colors">Features</Link>
-          <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
           <Link href="#about" className="hover:text-white transition-colors">About</Link>
         </nav>
         <div className="flex items-center gap-4">
           <Link href="/login" className="text-sm text-zinc-400 hover:text-white transition-colors hidden sm:block">Log in</Link>
           <Button asChild size="sm" className="bg-white text-black hover:bg-zinc-200 rounded-full h-8 px-4 text-xs font-medium">
-            <Link href="/signup">Get Started</Link>
+            <Link href="/signup">Join Now</Link>
           </Button>
         </div>
       </div>
@@ -94,7 +93,7 @@ function HeroSection() {
           className="flex items-center justify-center gap-4"
         >
           <Button asChild size="lg" className="h-12 rounded-full px-8 text-sm font-medium bg-white text-black hover:bg-zinc-200">
-            <Link href="/signup">Start Free Trial <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link href="/signup">Sign Up <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="h-12 rounded-full px-8 text-sm font-medium border-white/10 bg-transparent text-white hover:bg-white/5">
             <Link href="#features">View Documentation</Link>
@@ -228,10 +227,9 @@ function CTA() {
         <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-8">Ready to build better products?</h2>
         <div className="flex justify-center gap-4">
           <Button asChild size="lg" className="rounded-full h-12 px-8 bg-white text-black hover:bg-zinc-200 font-medium">
-            <Link href="/signup">Start for free</Link>
+            <Link href="/signup">Join Now</Link>
           </Button>
         </div>
-        <p className="mt-8 text-zinc-500 text-sm">No credit card required. 14-day free trial.</p>
       </div>
     </section>
   )
@@ -253,7 +251,6 @@ function Footer() {
           <div className="flex flex-col gap-3">
             <h4 className="font-medium text-white">Product</h4>
             <Link href="#" className="text-zinc-500 hover:text-white transition-colors">Features</Link>
-            <Link href="#" className="text-zinc-500 hover:text-white transition-colors">Pricing</Link>
             <Link href="#" className="text-zinc-500 hover:text-white transition-colors">Changelog</Link>
           </div>
           <div className="flex flex-col gap-3">
