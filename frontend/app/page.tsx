@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { FeatureCard } from '@/components/ui/feature-card';
+import { BRANDS, FEATURES, INTEGRATIONS } from '@/constants/landing-page';
+
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-black text-white selection:bg-white selection:text-black">
@@ -118,12 +120,11 @@ function HeroSection() {
 }
 
 function StatsSection() {
-  const brands = ['Acme Inc', 'Linear', 'Raycast', 'Vercel', 'OpenAI', 'Midjourney', 'Anthropic', 'Supabase'];
   return (
     <section className="py-10 bg-black overflow-hidden border-b border-white/5">
       <div className="flex w-full">
         <div className="flex flex-nowrap animate-infinite-scroll gap-16 md:gap-32 px-16">
-          {[...brands, ...brands, ...brands].map((brand, i) => (
+          {[...BRANDS, ...BRANDS, ...BRANDS].map((brand, i) => (
             <div key={i} className="flex items-center justify-center gap-3 text-zinc-600 uppercase text-xs font-mono tracking-widest whitespace-nowrap hover:text-white transition-colors cursor-default">
               <div className="w-2 h-2 rounded-full bg-current opacity-50" /> {brand}
             </div>
@@ -135,44 +136,6 @@ function StatsSection() {
 }
 
 function FeatureBento() {
-  const features = [
-    {
-      title: "Sentiment Analysis",
-      desc: "Real-time sentiment tracking across all channels. Detect patterns early.",
-      icon: TrendingUp,
-      className: ""
-    },
-    {
-      title: "Smart Tagging",
-      desc: "Auto-categorization powered by state-of-the-art LLMs.",
-      icon: Brain,
-      className: ""
-    },
-    {
-      title: "Real-time Alerts",
-      desc: "Get notified via Slack for urgent issues instantly.",
-      icon: Zap,
-      className: ""
-    },
-    {
-      title: "Secure by Design",
-      desc: "SOC2 Type II Ready. Encrypted at rest and in transit.",
-      icon: Shield,
-      className: ""
-    },
-    {
-      title: "Team Collaboration",
-      desc: "Comment, tag, and resolve feedback items together.",
-      icon: MessageSquare,
-      className: ""
-    },
-    {
-      title: "Custom API",
-      desc: "Export data to your warehouse or build custom integrations easily.",
-      icon: Sparkles,
-      className: ""
-    }
-  ];
   return (
     <section id="features" className="py-32 bg-black">
       <div className="container mx-auto px-6">
@@ -181,7 +144,7 @@ function FeatureBento() {
           <p className="text-zinc-400 max-w-lg text-lg">Beautifully designed tools to help you uncover insights from noise.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map((f, i) => (
+          {FEATURES.map((f, i) => (
             <FeatureCard
               key={i}
               className={f.className}
@@ -204,7 +167,7 @@ function IntegrationSection() {
       <div className="container mx-auto px-6 text-center">
         <h2 className="text-3xl font-semibold tracking-tight mb-16">Connects with your favorite tools</h2>
         <div className="flex flex-wrap justify-center gap-4">
-          {['Slack', 'Discord', 'Jira', 'Linear', 'Intercom', 'Zendesk'].map((tool, i) => (
+          {INTEGRATIONS.map((tool, i) => (
             <div key={i} className="px-6 py-3 rounded-full border border-white/10 bg-zinc-900/30 text-zinc-300 text-sm hover:border-white/20 hover:bg-zinc-800 transition-all cursor-default">
               {tool}
             </div>

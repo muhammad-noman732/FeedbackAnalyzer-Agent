@@ -17,6 +17,7 @@ import { FeedbackAnalysis, AnalyticsSummary } from '@/types/analysis';
 import { useDashboard } from '@/hooks/useDashboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { SIDEBAR_ITEMS } from '@/constants/dashboard';
 
 
 const TRUNCATE_LIMIT = 300;
@@ -81,11 +82,7 @@ export default function DashboardPage() {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-2">
-          {[
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-            { id: 'chat', label: 'Chat & Upload', icon: MessageSquare },
-            { id: 'insights', label: 'Strategic Roadmap', icon: Lightbulb },
-          ].map(item => (
+          {SIDEBAR_ITEMS.map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as 'analytics' | 'chat' | 'insights')}
